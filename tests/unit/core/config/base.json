@@ -1,0 +1,13 @@
+{
+  "app": {
+    "name": "Python Utility Library - Test"
+  },
+  "logging": {
+    "level": "DEBUG"
+  },
+  "services": {
+    "database": {
+      "name": "test_db"
+    }
+  }
+}
