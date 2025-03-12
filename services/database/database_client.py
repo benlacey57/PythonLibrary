@@ -374,3 +374,233 @@ class DatabaseClient(BaseClient, Configurable, Loggable):
             # Release connection if not in a transaction
             if connection and (not hasattr(self._local, 'transaction_level') or self._local.transaction_level == 0):
                 self.release(connection)
+                
+    def query(self, query, parameters=None):
+       """
+       Execute a query that returns results.
+       
+       Args:
+           query: SQL query string.
+           parameters: Query parameters.
+           
+       Returns:
+           list: Query results as a list of dictionaries.
+           
+       Raises:
+           DatabaseError: If query execution fails.
+       """
+       connection = None
+       
+       try:
+           # Get connection (from transaction or pool)
+           if hasattr(self._local, 'connection') and self._local.connection is not None:
+               connection = self._local.connection
+           else:
+               connection = self.connect()
+               
+           self.logger.debug(f"Executing query: {query}")
+           
+           cursor = connection.cursor()
+           if parameters:
+               cursor.execute(query, parameters)
+           else:
+               cursor.execute(query)
+               
+           # Get column names
+           columns = [column[0] for column in cursor.description]
+           
+           # Fetch all rows and convert to dictionaries
+           rows = cursor.fetchall()
+           result = []
+           
+           for row in rows:
+               result.append(dict(zip(columns, row)))
+               
+           cursor.close()
+           return result
+       except Exception as e:
+           self.logger.error(f"Query execution error: {str(e)}")
+           raise DatabaseError(
+               f"Query execution failed: {str(e)}",
+               query=query,
+               error_code="DB-006"
+           )
+       finally:
+           # Release connection if not in a transaction
+           if connection and (not hasattr(self._local, 'transaction_level') or self._local.transaction_level == 0):
+               self.release(connection)
+   
+    def query_one(self, query, parameters=None):
+        """
+        Execute a query and return a single result.
+        
+        Args:
+            query: SQL query string.
+            parameters: Query parameters.
+            
+        Returns:
+            dict: First row of results as a dictionary or None if no results.
+            
+        Raises:
+            DatabaseError: If query execution fails.
+        """
+        results = self.query(query, parameters)
+        return results[0] if results else None
+   
+    @contextmanager
+    def transaction(self):
+            """
+            Create a transaction context.
+            
+            Usage:
+                with db_client.transaction():
+                    db_client.execute("INSERT INTO ...")
+                    db_client.execute("UPDATE ...")
+                    
+            Raises:
+                DatabaseError: If transaction operations fail.
+            """
+            if not hasattr(self._local, 'connection') or self._local.connection is None:
+                self._local.connection = self.connect()
+                self._local.transaction_level = 0
+                
+            # Increment transaction level (for nested transactions)
+            self._local.transaction_level += 1
+            
+            self.logger.debug(f"Starting transaction (level {self._local.transaction_level})")
+            
+            try:
+                yield
+                
+                # Only commit if this is the outermost transaction
+                if self._local.transaction_level == 1:
+                    self._local.connection.commit()
+                    self.logger.debug("Transaction committed")
+            except Exception as e:
+                # Rollback on error
+                if self._local.transaction_level == 1:
+                    self._local.connection.rollback()
+                    self.logger.debug(f"Transaction rolled back: {str(e)}")
+                raise
+            finally:
+                # Decrement transaction level
+                self._local.transaction_level -= 1
+                
+                # Release connection if this is the outermost transaction
+                if self._local.transaction_level == 0:
+                    connection = self._local.connection
+                    self._local.connection = None
+                    self.release(connection)
+
+    def _connect_sqlite(self):
+        """
+        Connect to SQLite database.
+        
+        Returns:
+            sqlite3.Connection: Database connection.
+            
+        Raises:
+            DatabaseError: If connection fails.
+        """
+        try:
+            connection_string = self.config.get("services.database.connection")
+            
+            # Enable dictionary access for rows
+            connection = sqlite3.connect(connection_string)
+            connection.row_factory = sqlite3.Row
+            
+            return connection
+        except Exception as e:
+            raise DatabaseError(f"SQLite connection failed: {str(e)}", error_code="DB-007")
+
+    def _connect_postgresql(self):
+        """
+        Connect to PostgreSQL database.
+        
+        Returns:
+            Connection: Database connection.
+            
+        Raises:
+            ImportError: If psycopg2 is not installed.
+            DatabaseError: If connection fails.
+        """
+        try:
+            import psycopg2
+            import psycopg2.extras
+        except ImportError:
+            raise ImportError("psycopg2 module not found. Please install it with: pip install psycopg2-binary")
+            
+        try:
+            host = self.config.get("services.database.host")
+            port = self.config.get("services.database.port")
+            database = self.config.get("services.database.name")
+            user = self.config.get("services.database.user")
+            password = self.config.get("services.database.password")
+            
+            # Connect with dictionary cursor
+            connection = psycopg2.connect(
+                host=host,
+                port=port,
+                database=database,
+                user=user,
+                password=password
+            )
+            
+            # Enable dictionary access for rows
+            connection.cursor_factory = psycopg2.extras.DictCursor
+            
+            return connection
+        except Exception as e:
+            raise DatabaseError(f"PostgreSQL connection failed: {str(e)}", error_code="DB-008")
+
+    def _connect_mysql(self):
+        """
+        Connect to MySQL database.
+        
+        Returns:
+            Connection: Database connection.
+            
+        Raises:
+            ImportError: If mysql-connector-python is not installed.
+            DatabaseError: If connection fails.
+        """
+        try:
+            import mysql.connector
+        except ImportError:
+            raise ImportError("mysql-connector-python module not found. Please install it with: pip install mysql-connector-python")
+            
+        try:
+            host = self.config.get("services.database.host")
+            port = self.config.get("services.database.port")
+            database = self.config.get("services.database.name")
+            user = self.config.get("services.database.user")
+            password = self.config.get("services.database.password")
+            
+            connection = mysql.connector.connect(
+                host=host,
+                port=port,
+                database=database,
+                user=user,
+                password=password
+            )
+            
+            return connection
+        except Exception as e:
+            raise DatabaseError(f"MySQL connection failed: {str(e)}", error_code="DB-009")
+
+    def __enter__(self):
+        """
+        Support for context manager.
+        
+        Returns:
+            DatabaseClient: This instance.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Support for context manager.
+        
+        Closes the connection when exiting the context.
+        """
+        self.close()
