@@ -8,6 +8,7 @@ from queue import Queue, Empty
 from core.base.base_client import BaseClient
 from core.interfaces.configurable import Configurable
 from core.interfaces.loggable import Loggable
+from core.interfaces.database import Database
 from core.exceptions import DatabaseError, ConnectionError
 
 class ConnectionPool:
