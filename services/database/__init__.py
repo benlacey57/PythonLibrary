@@ -1,3 +1,3 @@
-from .database_client import DatabaseClient
-
-__all__ = ['DatabaseClient']
+"""
+Database module for the Python Utility Library.
+"""

@@ -1,4 +1,11 @@
-class FileCacheBackend:
+import hashlib
+import pickle
+import time
+from pathlib import Path
+from typing import Any, Optional
+from python_library.services.cache.caching_service import CachingService
+
+class FileCacheBackend(CachingService):
     """
     File-based cache backend.
     """

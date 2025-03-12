@@ -1,3 +1,3 @@
-from .log_manager import LogManager
-
-__all__ = ['LogManager']
+"""
+Logging module for the Python Utility Library.
+"""

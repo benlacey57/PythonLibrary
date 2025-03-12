@@ -2,9 +2,13 @@ import os
 import json
 import pytest
 from pathlib import Path
+import core.config.config_manager as config_manager
 
 class TestConfigManager:
     """Test suite for ConfigManager."""
+    
+    def __init__(self):
+        self.config_manager = config_manager.ConfigManager()
     
     @pytest.fixture
     def config_dir(self, tmp_path):
@@ -56,13 +60,12 @@ class TestConfigManager:
     
     def test_hierarchical_config_loading(self, config_dir, monkeypatch):
         """Test loading of configuration in hierarchical order."""
-        from core.config.config_manager import ConfigManager
         
         # Set environment to test
         monkeypatch.setenv("PYTHON_ENV", "test")
         
         # Initialize ConfigManager with config directory
-        config = ConfigManager(config_dir=config_dir)
+        config = self.config_manager(config_dir=config_dir)
         
         # Test environment override
         assert config.get("app.name") == "TestApp"
@@ -77,25 +80,21 @@ class TestConfigManager:
     
     def test_environment_specific_loading(self, config_dir):
         """Test loading configuration specific to an environment."""
-        from core.config.config_manager import ConfigManager
-        
         # Test environment
-        config_test = ConfigManager(config_dir=config_dir, environment="test")
+        config_test = self.config_manager(config_dir=config_dir, environment="test")
         assert config_test.get("app.name") == "TestApp"
         
         # Prod environment (falls back to base since no prod.json exists)
-        config_prod = ConfigManager(config_dir=config_dir, environment="prod")
+        config_prod = self.config_manager(config_dir=config_dir, environment="prod")
         assert config_prod.get("app.name") == "BaseApp"
     
     def test_environment_detection(self, config_dir, monkeypatch):
         """Test environment detection from PYTHON_ENV variable."""
-        from core.config.config_manager import ConfigManager
-        
         # Set environment variable
         monkeypatch.setenv("PYTHON_ENV", "test")
         
         # Initialize without explicit environment
-        config = ConfigManager(config_dir=config_dir)
+        config = self.config_manager(config_dir=config_dir)
         
         # Should detect test environment
         assert config.get_environment() == "test"
@@ -103,27 +102,23 @@ class TestConfigManager:
     
     def test_env_variable_override(self, config_dir, monkeypatch):
         """Test environment variables override file-based config."""
-        from core.config.config_manager import ConfigManager
-        
         # Set environment variable
         monkeypatch.setenv("APP_NAME", "EnvApp")
         
         # Initialize with config dir
-        config = ConfigManager(config_dir=config_dir, environment="test")
+        config = self.config_manager(config_dir=config_dir, environment="test")
         
         # Environment variable should override file config
         assert config.get("app.name") == "EnvApp"
     
     def test_type_conversion_from_env(self, monkeypatch):
         """Test automatic type conversion from environment variables."""
-        from core.config.config_manager import ConfigManager
-        
         # Set various typed environment variables
         monkeypatch.setenv("SERVER_PORT", "8080")
         monkeypatch.setenv("FEATURE_ENABLED", "true")
         monkeypatch.setenv("TIMEOUT_SECONDS", "30.5")
         
-        config = ConfigManager()
+        config = self.config_manager
         config.load_from_env()
         
         # Check type conversions

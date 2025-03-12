@@ -1,3 +1,3 @@
-from .console_service import ConsoleService
-
-__all__ = ['ConsoleService']
+"""
+Console module for the Python Utility Library.
+"""

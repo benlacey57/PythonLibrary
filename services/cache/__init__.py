@@ -1,3 +1,3 @@
-from .caching_service import CachingService
-
-__all__ = ['CachingService']
+"""
+Cache module for the Python Utility Library.
+"""

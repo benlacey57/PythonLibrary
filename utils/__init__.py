@@ -1,3 +1,3 @@
 """
-Utility functions and helpers for the Python Utility Library.
+Utils module for the Python Utility Library.
 """

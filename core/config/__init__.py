@@ -1,3 +1,3 @@
-from .config_manager import ConfigManager
-
-__all__ = ['ConfigManager']
+"""
+Config module for the Python Utility Library.
+"""

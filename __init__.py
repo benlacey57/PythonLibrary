@@ -1,6 +1,9 @@
-"""
-Python Utility Library
+from .core import *
+from .extensions import *
+from .services import *
 
-A comprehensive, modular utility library for Python development
-following SOLID and DRY principles.
-"""
+# Import modules to make them available when the package is imported
+
+# You can also define package-level variables or functions here
+__version__ = '0.1'
+__author__ = 'Ben Lacey'

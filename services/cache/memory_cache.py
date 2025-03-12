@@ -1,4 +1,8 @@
-class MemoryCacheBackend:
+import time
+from typing import Any, Optional
+from python_library.services.cache.caching_service import CachingService
+
+class MemoryCacheBackend(CachingService):
     """
     Memory-based cache backend.
     """

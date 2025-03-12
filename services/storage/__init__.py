@@ -1,3 +1,3 @@
-from .file_client import FileClient
-
-__all__ = ['FileClient']
+"""
+Storage module for the Python Utility Library.
+"""
